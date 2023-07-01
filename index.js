@@ -5,10 +5,19 @@ const fs = require('fs');
 const axios = require('axios');
 const mongodb = require('mongodb');
 
+const bodyParser = require('body-parser');
 const app = express();
+
+
+const cors = require("cors");
+app.use(cors());
+app.use(express.json());
+
+
+const url = process.env.url ;
+const port = process.env.port || 3000;
 const upload = multer({ dest: 'uploads/' });
 const MongoClient = mongodb.MongoClient;
-const url = 'mongodb+srv://plan:plan@cluster0.yuuofm2.mongodb.net/?retryWrites=true&w=majority';
 const dbName = 'test';
 const collectionName = 'helpers';
 
@@ -69,6 +78,6 @@ app.get('/data', (req, res) => {
 });
 
 // Start the server
-app.listen(3000, () => {
-  console.log('Server is running on port 3000');
+app.listen(port, () => {
+  console.log(`Server is running on ${port} `);
 });
