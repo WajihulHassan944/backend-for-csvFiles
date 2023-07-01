@@ -4,14 +4,13 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const mongoose = require('mongoose');
-const cors = require('cors');
+const csvParser = require('csv-parser');
 
 // Connect to MongoDB
-mongoose.connect('mongodb+srv://plan:plan@cluster0.yuuofm2.mongodb.net/?retryWrites=true&w=majority', {
+mongoose.connect('mongodb+srv://<your-mongodb-connection-string>', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
-app.use(cors());
 
 // Create a file schema
 const fileSchema = new mongoose.Schema({
@@ -41,11 +40,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Serve uploaded files
 app.use('/uploaded_files', express.static(path.join(__dirname, 'uploads')));
 
-// API endpoint to render the home page
-app.get('/', (req, res) => {
-  res.send("786");
-});
-
 // API endpoint to handle file upload
 app.post('/upload', upload.single('file'), async (req, res) => {
   if (!req.file) {
@@ -56,7 +50,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
   try {
     const file = new File({
       fileName: req.file.originalname,
-      filePath: req.file.path,
+      filePath: req.file.filename,
     });
     await file.save();
     console.log('Uploaded file:', req.file.originalname);
@@ -81,12 +75,12 @@ app.get('/files', async (req, res) => {
 // API endpoint to handle file deletion
 app.get('/delete/:file', async (req, res) => {
   const fileName = req.params.file;
-  const filePath = path.join('uploads', fileName);
+  const filePath = path.join(__dirname, 'uploads', fileName);
 
   try {
     // Delete the file record from the database
     await File.deleteOne({ fileName: fileName });
-    
+
     // Delete the file from the filesystem
     fs.unlink(filePath, err => {
       if (err) {
@@ -101,42 +95,46 @@ app.get('/delete/:file', async (req, res) => {
     return res.status(500).send('Error deleting file.');
   }
 });
-// ...
 
 // API endpoint to view file
 app.get('/view/:file', async (req, res) => {
-    const fileName = req.params.file;
-    const filePath = path.join(__dirname, 'uploads', fileName);
-  
-    try {
-      // Read the CSV file content
-      const fileContent = fs.readFileSync(filePath, 'utf-8');
-  
-      // Parse the CSV data
-      const rows = fileContent.split('\n');
-      const tableHTML =
-        '<thead><tr>' +
-        rows[0]
-          .split(',')
-          .map((cell) => `<th>${cell}</th>`)
-          .join('') +
-        '</tr></thead><tbody>' +
-        rows
-          .slice(1)
-          .map((row) => '<tr>' + row.split(',').map((cell) => `<td>${cell}</td>`).join('') + '</tr>')
-          .join('') +
-        '</tbody>';
-  
-      // Render the table
-      res.send(tableHTML);
-    } catch (error) {
-      console.error('Error viewing file:', error);
-      return res.status(500).send('Error viewing file.');
-    }
-  });
-  
-  // ...
-    
+  const fileName = req.params.file;
+  const filePath = path.join(__dirname, 'uploads', fileName);
+
+  try {
+    const results = [];
+    const header = [];
+
+    fs.createReadStream(filePath)
+      .pipe(csvParser())
+      .on('headers', (headers) => {
+        // Store the CSV headers
+        header.push(...headers);
+      })
+      .on('data', (data) => {
+        // Store each row of CSV data
+        results.push(data);
+      })
+      .on('end', () => {
+        // Generate HTML table from the CSV data
+        const tableHTML =
+          '<thead><tr>' +
+          header.map((cell) => `<th>${cell}</th>`).join('') +
+          '</tr></thead><tbody>' +
+          results
+            .map((row) => '<tr>' + header.map((cell) => `<td>${row[cell]}</td>`).join('') + '</tr>')
+            .join('') +
+          '</tbody>';
+
+        // Send the HTML table as the response
+        res.send(`<table>${tableHTML}</table>`);
+      });
+  } catch (error) {
+    console.error('Error viewing file:', error);
+    return res.status(500).send('Error viewing file.');
+  }
+});
+
 // Start the server
 app.listen(3000, () => {
   console.log('Server is running on port 3000');
