@@ -28,41 +28,50 @@ app.get('/', (req, res) => {
 
 // Handle CSV file upload and MongoDB insertion
 app.post('/upload', upload.single('csvFile'), (req, res) => {
-  const filePath = req.file.path;
-  const data = [];
-
-  fs.createReadStream(filePath)
-    .pipe(csv())
-    .on('data', (row) => {
-      data.push(row);
-    })
-    .on('end', () => {
-      MongoClient.connect(url, (err, client) => {
-        if (err) {
-          console.error('Error connecting to MongoDB:', err);
-          res.status(500).send('Internal Server Error');
-          return;
-        }
-
-        const db = client.db(dbName);
-        const collection = db.collection(collectionName);
-
-        collection.insertMany(data, (err, result) => {
+    const filePath = req.file.path;
+    const data = [];
+  
+    fs.createReadStream(filePath)
+      .pipe(csv())
+      .on('data', (row) => {
+        data.push(row);
+      })
+      .on('end', () => {
+        MongoClient.connect(url, (err, client) => {
           if (err) {
-            console.error('Error inserting data into MongoDB:', err);
+            console.error('Error connecting to MongoDB:', err);
             res.status(500).send('Internal Server Error');
             return;
           }
-
-          fs.unlinkSync(filePath); // Remove the temporary CSV file
-          res.send('CSV file uploaded and data inserted into MongoDB.');
+  
+          const db = client.db(dbName);
+          const collection = db.collection(collectionName);
+  
+          collection.insertMany(data, (err, result) => {
+            if (err) {
+              console.error('Error inserting data into MongoDB:', err);
+              res.status(500).send('Internal Server Error');
+              return;
+            }
+  
+            fs.unlinkSync(filePath); // Remove the temporary CSV file
+            res.send('CSV file uploaded and data inserted into MongoDB.');
+  
+            // Add an alert message
+            const script = `
+              <script>
+                alert('CSV file uploaded and data inserted into MongoDB.');
+              </script>
+            `;
+            res.write(script);
+            res.end();
+          });
+  
+          client.close();
         });
-
-        client.close();
       });
-    });
-});
-
+  });
+  
 // API endpoint to fetch the data from your backend API
 app.get('/data', (req, res) => {
   const apiURL = 'https://backend-for-plans.onrender.com/api/helpers';
