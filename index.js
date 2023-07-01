@@ -101,37 +101,42 @@ app.get('/delete/:file', async (req, res) => {
     return res.status(500).send('Error deleting file.');
   }
 });
+// ...
+
+// API endpoint to view file
 app.get('/view/:file', async (req, res) => {
     const fileName = req.params.file;
     const filePath = path.join(__dirname, 'uploads', fileName);
   
     try {
-      const results = [];
-      const header = [];
+      // Read the CSV file content
+      const fileContent = fs.readFileSync(filePath, 'utf-8');
   
-      fs.createReadStream(filePath)
-        .pipe(csvParser())
-        .on('headers', (headers) => {
-          headers.map((head) => {
-            header.push(head);
-          });
-        })
-        .on('data', (data) => results.push(data))
-        .on('end', () => {
-          res.render('file_viewer', {
-            title: 'File Viewer',
-            fileName: fileName,
-            head: header,
-            data: results,
-            length: results.length
-          });
-        });
+      // Parse the CSV data
+      const rows = fileContent.split('\n');
+      const tableHTML =
+        '<thead><tr>' +
+        rows[0]
+          .split(',')
+          .map((cell) => `<th>${cell}</th>`)
+          .join('') +
+        '</tr></thead><tbody>' +
+        rows
+          .slice(1)
+          .map((row) => '<tr>' + row.split(',').map((cell) => `<td>${cell}</td>`).join('') + '</tr>')
+          .join('') +
+        '</tbody>';
+  
+      // Render the table
+      res.send(tableHTML);
     } catch (error) {
       console.error('Error viewing file:', error);
       return res.status(500).send('Error viewing file.');
     }
   });
   
+  // ...
+    
 // Start the server
 app.listen(3000, () => {
   console.log('Server is running on port 3000');
