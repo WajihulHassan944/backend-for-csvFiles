@@ -4,13 +4,14 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const mongoose = require('mongoose');
-const cors = require('cors'); // Add the 'cors' package
+const cors = require('cors');
 
 // Connect to MongoDB
 mongoose.connect('mongodb+srv://plan:plan@cluster0.yuuofm2.mongodb.net/?retryWrites=true&w=majority', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
+app.use(cors());
 
 // Create a file schema
 const fileSchema = new mongoose.Schema({
@@ -32,20 +33,7 @@ const fileSchema = new mongoose.Schema({
 const File = mongoose.model('File', fileSchema);
 
 // Set up file upload using multer
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
-  }
-});
-
-const upload = multer({ storage: storage });
-
-// Enable CORS
-app.use(cors());
+const upload = multer({ dest: 'uploads/' });
 
 // Serve static files (CSS, JS, etc.)
 app.use(express.static(path.join(__dirname, 'public')));
@@ -68,7 +56,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
   try {
     const file = new File({
       fileName: req.file.originalname,
-      filePath: req.file.filename, // Update the file path
+      filePath: req.file.path,
     });
     await file.save();
     console.log('Uploaded file:', req.file.originalname);
@@ -113,7 +101,37 @@ app.get('/delete/:file', async (req, res) => {
     return res.status(500).send('Error deleting file.');
   }
 });
-
+app.get('/view/:file', async (req, res) => {
+    const fileName = req.params.file;
+    const filePath = path.join(__dirname, 'uploads', fileName);
+  
+    try {
+      const results = [];
+      const header = [];
+  
+      fs.createReadStream(filePath)
+        .pipe(csvParser())
+        .on('headers', (headers) => {
+          headers.map((head) => {
+            header.push(head);
+          });
+        })
+        .on('data', (data) => results.push(data))
+        .on('end', () => {
+          res.render('file_viewer', {
+            title: 'File Viewer',
+            fileName: fileName,
+            head: header,
+            data: results,
+            length: results.length
+          });
+        });
+    } catch (error) {
+      console.error('Error viewing file:', error);
+      return res.status(500).send('Error viewing file.');
+    }
+  });
+  
 // Start the server
 app.listen(3000, () => {
   console.log('Server is running on port 3000');
