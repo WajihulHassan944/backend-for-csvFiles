@@ -4,12 +4,14 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const mongoose = require('mongoose');
+const cors = require('cors');
 
 // Connect to MongoDB
 mongoose.connect('mongodb+srv://plan:plan@cluster0.yuuofm2.mongodb.net/?retryWrites=true&w=majority', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
+app.use(cors());
 
 // Create a file schema
 const fileSchema = new mongoose.Schema({
