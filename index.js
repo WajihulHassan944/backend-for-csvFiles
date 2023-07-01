@@ -16,7 +16,6 @@ app.use(express.json());
 
 const url = process.env.url ;
 const port = process.env.port || 3000;
-const upload = multer({ dest: 'uploads/' });
 const MongoClient = mongodb.MongoClient;
 const dbName = 'test';
 const collectionName = 'helpers';
@@ -25,7 +24,14 @@ const collectionName = 'helpers';
 app.get('/', (req, res) => {
   res.send("Bismillah 786");
 });
-
+const storage = multer.diskStorage({
+    destination: 'uploads/',
+    filename: function (req, file, cb) {
+      cb(null, file.originalname);
+    }
+  });
+  
+  const upload = multer({ storage: storage });
 // Handle CSV file upload and MongoDB insertion
 app.post('/upload', upload.single('csvFile'), (req, res) => {
     const filePath = req.file.path;
