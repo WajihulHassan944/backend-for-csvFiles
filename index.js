@@ -4,14 +4,13 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const mongoose = require('mongoose');
-const cors = require('cors');
+const cors = require('cors'); // Add the 'cors' package
 
 // Connect to MongoDB
 mongoose.connect('mongodb+srv://plan:plan@cluster0.yuuofm2.mongodb.net/?retryWrites=true&w=majority', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
-app.use(cors());
 
 // Create a file schema
 const fileSchema = new mongoose.Schema({
@@ -33,7 +32,20 @@ const fileSchema = new mongoose.Schema({
 const File = mongoose.model('File', fileSchema);
 
 // Set up file upload using multer
-const upload = multer({ dest: 'uploads/' });
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ storage: storage });
+
+// Enable CORS
+app.use(cors());
 
 // Serve static files (CSS, JS, etc.)
 app.use(express.static(path.join(__dirname, 'public')));
@@ -56,7 +68,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
   try {
     const file = new File({
       fileName: req.file.originalname,
-      filePath: req.file.path,
+      filePath: req.file.filename, // Update the file path
     });
     await file.save();
     console.log('Uploaded file:', req.file.originalname);
