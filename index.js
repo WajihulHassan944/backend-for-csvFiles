@@ -28,21 +28,17 @@ const fileSchema = new mongoose.Schema({
   timestamps: {
     options: { timeZone: 'Asia/Kolkata' }
   }
+  
 });
 
+
+
+
+/** ------------------ MAKING MODEL ------------------ **/
 const File = mongoose.model("File", fileSchema);
 
 // Set up file upload using multer
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/files');
-  },
-  filename: function (req, file, cb) {
-    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({ storage: storage });
+const upload = multer({ dest: 'uploads/files'})
 
 // API endpoint to handle file upload
 app.post('/upload', upload.single('file'), async (req, res) => {
@@ -50,12 +46,13 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     return res.status(400).send('No file uploaded.');
   }
 
+  // Create a new file record in the database
   try {
     const file = new File({
-      fileName: req.file.originalname,
-      filePath: req.file.path,
-      file: req.file.filename
-    });
+       fileName: req.file.originalname,
+            filePath: req.file.path,
+            file: req.file.filename
+       });
     await file.save();
     console.log('Uploaded file:', req.file.originalname);
     return res.status(200).send('File uploaded successfully.');
@@ -79,11 +76,13 @@ app.get('/files', async (req, res) => {
 // API endpoint to handle file deletion
 app.get('/delete/:file', async (req, res) => {
   const fileName = req.params.file;
-  const filePath = path.join(__dirname, 'uploads', 'files', fileName);
+  const filePath = path.join(__dirname, 'uploads', fileName);
 
   try {
-    await File.deleteOne({ file: fileName });
+    // Delete the file record from the database
+    await File.deleteOne({ fileName: fileName });
 
+    // Delete the file from the filesystem
     fs.unlink(filePath, err => {
       if (err) {
         console.error('Error deleting file:', err);
@@ -97,7 +96,6 @@ app.get('/delete/:file', async (req, res) => {
     return res.status(500).send('Error deleting file.');
   }
 });
-
 // API endpoint to view file
 app.get('/view/:file', async (req, res) => {
   const fileName = req.params.file;
@@ -116,12 +114,15 @@ app.get('/view/:file', async (req, res) => {
     fs.createReadStream(filePath)
       .pipe(csvParser())
       .on('headers', (headers) => {
+        // Store the CSV headers
         header.push(...headers);
       })
       .on('data', (data) => {
+        // Store each row of CSV data
         results.push(data);
       })
       .on('end', () => {
+        // Generate HTML table from the CSV data
         const tableHTML =
           '<thead><tr>' +
           header.map((cell) => `<th>${cell}</th>`).join('') +
@@ -131,6 +132,7 @@ app.get('/view/:file', async (req, res) => {
             .join('') +
           '</tbody>';
 
+        // Send the HTML table as the response
         res.send(`<table>${tableHTML}</table>`);
       });
   } catch (error) {
@@ -139,6 +141,7 @@ app.get('/view/:file', async (req, res) => {
   }
 });
 
+    
 // Start the server
 app.listen(3000, () => {
   console.log('Server is running on port 3000');
