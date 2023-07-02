@@ -13,30 +13,30 @@ mongoose.connect('mongodb+srv://plan:plan@cluster0.yuuofm2.mongodb.net/?retryWri
 });
 app.use(cors());
 
-// Create a file schema
 const fileSchema = new mongoose.Schema({
   fileName: {
-    type: String,
-    required: true,
+    type: String
   },
-  filePath: {
-    type: String,
-    required: true,
+  filePath : {
+    type:String
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
+  file: {
+    type: String
+  }
+}, {
+  timestamps: {
+    options: { timeZone: 'Asia/Kolkata' }
+  }
 });
 
-// Create a file model
-const File = mongoose.model('File', fileSchema);
+
+
+
+/** ------------------ MAKING MODEL ------------------ **/
+const File = mongoose.model("File", fileSchema);
 
 // Set up file upload using multer
-const upload = multer({ dest: 'uploads/' });
-
-// Serve static files (CSS, JS, etc.)
-app.use(express.static(path.join(__dirname, 'public')));
+const upload = multer({ dest: 'uploads/files'})
 
 // Serve uploaded files
 app.use('/uploaded_files', express.static(path.join(__dirname, 'uploads')));
@@ -50,9 +50,10 @@ app.post('/upload', upload.single('file'), async (req, res) => {
   // Create a new file record in the database
   try {
     const file = new File({
-      fileName: req.file.originalname,
-      filePath: req.file.filename,
-    });
+       fileName: req.file.originalname,
+            filePath: req.file.path,
+            file: req.file.filename
+       });
     await file.save();
     console.log('Uploaded file:', req.file.originalname);
     return res.status(200).send('File uploaded successfully.');
