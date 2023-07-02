@@ -5,6 +5,7 @@ const multer = require('multer');
 const fs = require('fs');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const csvParser = require('csv-parser');
 
 // Connect to MongoDB
 mongoose.connect('mongodb+srv://plan:plan@cluster0.yuuofm2.mongodb.net/?retryWrites=true&w=majority', {
@@ -27,6 +28,7 @@ const fileSchema = new mongoose.Schema({
   timestamps: {
     options: { timeZone: 'Asia/Kolkata' }
   }
+  
 });
 
 
@@ -37,9 +39,6 @@ const File = mongoose.model("File", fileSchema);
 
 // Set up file upload using multer
 const upload = multer({ dest: 'uploads/files'})
-
-// Serve uploaded files
-app.use('/uploaded_files', express.static(path.join(__dirname, 'uploads')));
 
 // API endpoint to handle file upload
 app.post('/upload', upload.single('file'), async (req, res) => {
@@ -66,7 +65,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 // API endpoint to get a list of uploaded files
 app.get('/files', async (req, res) => {
   try {
-    const files = await File.find().sort({ createdAt: 'desc' });
+    const files = await File.find();
     return res.json(files);
   } catch (error) {
     console.error('Error retrieving file list:', error);
